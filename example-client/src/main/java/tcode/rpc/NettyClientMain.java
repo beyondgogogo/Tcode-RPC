@@ -1,6 +1,6 @@
 package tcode.rpc;
 
-public class Main {
+public class NettyClientMain {
     public static void main(String[] args) {
         System.out.println("Hello world!");
     }
