@@ -16,6 +16,17 @@
         <module>simple-servie</module>
     </modules>
 
+    <dependencies>
+        <!--lombok依赖，主要作用是减少样板代码-->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.22</version>
+            <scope>provided</scope>
+        </dependency>
+
+    </dependencies>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
