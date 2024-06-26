@@ -1,4 +1,6 @@
 package tcode.rpc.registry.zk;
 
-public class ZkServiceRegistryImpl {
+import tcode.rpc.registry.ServiceRegistry;
+
+public class ZkServiceRegistryImpl implements ServiceRegistry {
 }

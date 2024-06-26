@@ -6,17 +6,26 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.timeout.IdleStateHandler;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import tcode.rpc.enums.CompressTypeEnum;
+import tcode.rpc.enums.SerializationTypeEnum;
+import tcode.rpc.factory.SingletonFactory;
 import tcode.rpc.registry.ServiceDiscovery;
 import tcode.rpc.registry.zk.ZkServiceDiscoveryImpl;
+import tcode.rpc.remote.constants.RpcConstants;
+import tcode.rpc.remote.dto.RpcMessage;
 import tcode.rpc.remote.dto.RpcRequest;
 import tcode.rpc.remote.dto.RpcResponse;
 import tcode.rpc.remote.transport.RpcRequestTransport;
+import tcode.rpc.remote.transport.netty.codec.RpcMessageDecoder;
+import tcode.rpc.remote.transport.netty.codec.RpcMessageEncoder;
 
 import java.net.InetSocketAddress;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author 田成强
@@ -34,6 +43,9 @@ public class NettyRpcClient implements RpcRequestTransport {
 
     //服务发现
     private final ServiceDiscovery serviceDiscovery;
+
+    //未完成请求存储
+    private final UnprocessedRequests unprocessedRequests;
     /**
      * 构造函数完成对Netty客户端的基本设置
      * */
@@ -48,13 +60,16 @@ public class NettyRpcClient implements RpcRequestTransport {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
                         ChannelPipeline p = socketChannel.pipeline();
-                        //TODO:待施工,添加相应处理器
-                        //p.addLast(new IdleStateHandler());
+                        p.addLast(new IdleStateHandler(0, 5, 0, TimeUnit.SECONDS));
+                        p.addLast(new RpcMessageEncoder());
+                        p.addLast(new RpcMessageDecoder());
+                        p.addLast(new NettyRpcClientHandler());
                     }
                 });
-        //TODO:服务发现的初始化
-        channelProvider=new ChannelProvider();
-        serviceDiscovery=new ZkServiceDiscoveryImpl();
+        channelProvider= SingletonFactory.getInstance(ChannelProvider.class);
+        //TODO:服务发现有多个实现，可通过Spi来进行替换
+        serviceDiscovery=SingletonFactory.getInstance(ServiceDiscovery.class);
+        unprocessedRequests=SingletonFactory.getInstance(UnprocessedRequests.class);
     }
     /**
      * 此方法用于连接Netty服务端，并返回可用通道
@@ -88,7 +103,23 @@ public class NettyRpcClient implements RpcRequestTransport {
         //获取连接通道
         Channel channel=getChannel(inetSocketAddress);
         if(channel.isActive()){
-
+            //先将请求放入未完成队列
+            unprocessedRequests.put(rpcRequest.getRequestId(),resultFuture);
+            //利用Stream流式构建RpcMessage
+            RpcMessage rpcMessage=RpcMessage.builder().data(rpcRequest)
+                    .codec(SerializationTypeEnum.KYRO.getCode())//序列化方式
+                    .compress(CompressTypeEnum.GZIP.getCode())//压缩方式
+                    .messageType(RpcConstants.REQUEST_TYPE).build();//消息类型
+            channel.writeAndFlush(rpcMessage).addListener((ChannelFutureListener) future->{
+                if(future.isSuccess()){
+                    log.info("client send message:[{}]",rpcMessage);
+                }else{
+                    //请求失败，关闭通道:报异常
+                    future.channel().close();
+                    resultFuture.completeExceptionally(future.cause());
+                    log.error("Send failed:",future.cause());
+                }
+            });
         }
         return resultFuture;
     }
