@@ -1,12 +1,28 @@
 package tcode.rpc.remote.transport.netty.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import lombok.extern.slf4j.Slf4j;
+import tcode.rpc.compress.Compress;
+import tcode.rpc.compress.gzip.GzipCompress;
+import tcode.rpc.enums.CompressTypeEnum;
+import tcode.rpc.enums.SerializationTypeEnum;
 import tcode.rpc.remote.constants.RpcConstants;
+import tcode.rpc.remote.dto.RpcMessage;
+import tcode.rpc.remote.dto.RpcRequest;
+import tcode.rpc.remote.dto.RpcResponse;
+import tcode.rpc.serialize.Serializer;
+import tcode.rpc.serialize.kyro.KyroSerializer;
 
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 /**
+ * @author 田成强
+ * 解码器：将字节流转化为我们需要的RpcMessage
  * */
+@Slf4j
 public class RpcMessageDecoder extends LengthFieldBasedFrameDecoder {
     public RpcMessageDecoder() {
         // lengthFieldOffset: magic code is 4B, and version is 1B, and then full length. so value is 5
@@ -30,4 +46,102 @@ public class RpcMessageDecoder extends LengthFieldBasedFrameDecoder {
                              int lengthAdjustment, int initialBytesToStrip) {
         super(maxFrameLength, lengthFieldOffset, lengthFieldLength, lengthAdjustment, initialBytesToStrip);
     }
+
+
+    @Override
+    protected Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
+        Object decoded = super.decode(ctx, in);
+        if (decoded instanceof ByteBuf) {
+            ByteBuf frame = (ByteBuf) decoded;
+            if (frame.readableBytes() >= RpcConstants.TOTAL_LENGTH) {
+                try {
+                    return decodeFrame(frame);
+                } catch (Exception e) {
+                    log.error("Decode frame error!", e);
+                    throw e;
+                } finally {
+                    frame.release();
+                }
+            }
+
+        }
+        return decoded;
+    }
+
+
+    private Object decodeFrame(ByteBuf in) {
+        // note: must read ByteBuf in order
+        checkMagicNumber(in);
+        checkVersion(in);
+        int fullLength = in.readInt();
+        // build RpcMessage object
+        byte messageType = in.readByte();
+        byte codecType = in.readByte();
+        byte compressType = in.readByte();
+        int requestId = in.readInt();
+        RpcMessage rpcMessage = RpcMessage.builder()
+                .codec(codecType)
+                .requestId(requestId)
+                .messageType(messageType).build();
+        if (messageType == RpcConstants.HEARTBEAT_REQUEST_TYPE) {
+            rpcMessage.setData(RpcConstants.PING);
+            return rpcMessage;
+        }
+        if (messageType == RpcConstants.HEARTBEAT_RESPONSE_TYPE) {
+            rpcMessage.setData(RpcConstants.PONG);
+            return rpcMessage;
+        }
+        int bodyLength = fullLength - RpcConstants.HEAD_LENGTH;
+        if (bodyLength > 0) {
+            byte[] bs = new byte[bodyLength];
+            in.readBytes(bs);
+            // decompress the bytes
+            String compressName = CompressTypeEnum.getName(compressType);
+            /*
+            Compress compress = ExtensionLoader.getExtensionLoader(Compress.class)
+                    .getExtension(compressName);
+             */
+            Compress compress =new GzipCompress();
+            bs = compress.decompress(bs);
+            // deserialize the object
+            String codecName = SerializationTypeEnum.getName(rpcMessage.getCodec());
+            log.info("codec name: [{}] ", codecName);
+            /*
+            Serializer serializer = ExtensionLoader.getExtensionLoader(Serializer.class)
+                    .getExtension(codecName);
+
+             */
+            Serializer serializer =new KyroSerializer();
+            if (messageType == RpcConstants.REQUEST_TYPE) {
+                RpcRequest tmpValue = serializer.deserialize(bs, RpcRequest.class);
+                rpcMessage.setData(tmpValue);
+            } else {
+                RpcResponse tmpValue = serializer.deserialize(bs, RpcResponse.class);
+                rpcMessage.setData(tmpValue);
+            }
+        }
+        return rpcMessage;
+
+    }
+
+    private void checkVersion(ByteBuf in) {
+        // read the version and compare
+        byte version = in.readByte();
+        if (version != RpcConstants.VERSION) {
+            throw new RuntimeException("version isn't compatible" + version);
+        }
+    }
+
+    private void checkMagicNumber(ByteBuf in) {
+        // read the first 4 bit, which is the magic number, and compare
+        int len = RpcConstants.MAGIC_NUMBER.length;
+        byte[] tmp = new byte[len];
+        in.readBytes(tmp);
+        for (int i = 0; i < len; i++) {
+            if (tmp[i] != RpcConstants.MAGIC_NUMBER[i]) {
+                throw new IllegalArgumentException("Unknown magic code: " + Arrays.toString(tmp));
+            }
+        }
+    }
+
 }
