@@ -63,6 +63,11 @@ public class CuratorUtils {
 
     //服务发现
     public static List<String> discoverService(String serviceName){
+        //1.先从缓存里面查询服务
+        if(SERVICE_ADDRESS_MAP.containsKey(serviceName)){
+            return SERVICE_ADDRESS_MAP.get(serviceName);
+        }
+        //2.本地缓存没有再到注册中心中查找
         String servicePath=ZK_REGISTRY_PATH+"/"+serviceName;
         try{
             //先检查有没有节点
@@ -82,9 +87,11 @@ public class CuratorUtils {
         return null;
     }
 
-
     // 注册监听器
     private static void registerWatcher(String serviceName) {
+        if (SERVICE_CACHE_MAP.containsKey(serviceName)) {
+            return; // 如果已存在监听器，则无需再次注册
+        }
         String servicePath = ZK_REGISTRY_PATH + "/" + serviceName;
         PathChildrenCache pathChildrenCache = new PathChildrenCache(zkClient, servicePath, true);
         try {
@@ -100,25 +107,5 @@ public class CuratorUtils {
             log.error("Failed to register watcher for service [{}]", serviceName, e);
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }
