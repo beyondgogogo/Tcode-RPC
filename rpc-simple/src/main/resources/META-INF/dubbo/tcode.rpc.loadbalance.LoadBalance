@@ -1,0 +1,2 @@
+random=tcode.rpc.loadbalance.loadBalanceImpl.RandomLoadBalance
+consistent=tcode.rpc.loadbalance.loadBalanceImpl.ConsistentHashingLoadBalance

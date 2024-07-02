@@ -1,0 +1,2 @@
+failFast=tcode.rpc.tolerance.toleranceImpl.FailfastFaultTolerance
+failOver=tcode.rpc.tolerance.toleranceImpl.FailoverFaultTolerance

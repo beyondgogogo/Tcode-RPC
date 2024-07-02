@@ -9,8 +9,11 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.common.Extension;
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import tcode.rpc.enums.CompressTypeEnum;
 import tcode.rpc.enums.SerializationTypeEnum;
+import tcode.rpc.enums.ServiceDiscoveryEnum;
 import tcode.rpc.factory.SingletonFactory;
 import tcode.rpc.registry.ServiceDiscovery;
 import tcode.rpc.registry.zk.ZkServiceDiscoveryImpl;
@@ -66,9 +69,11 @@ public class NettyRpcClient implements RpcRequestTransport {
                         p.addLast(new NettyRpcClientHandler());
                     }
                 });
+
+        //服务发现有多个实现，可通过Spi来进行替换
+        serviceDiscovery= ExtensionLoader.getExtensionLoader(ServiceDiscovery.class).getExtension(ServiceDiscoveryEnum.ZK.getName());
+        //全局共享的可通过单例模式来获取
         channelProvider= SingletonFactory.getInstance(ChannelProvider.class);
-        //TODO:服务发现有多个实现，可通过Spi来进行替换
-        serviceDiscovery=SingletonFactory.getInstance(ServiceDiscovery.class);
         unprocessedRequests=SingletonFactory.getInstance(UnprocessedRequests.class);
     }
     /**
@@ -93,7 +98,7 @@ public class NettyRpcClient implements RpcRequestTransport {
     /**
      * 此方法用于发送消息,将经过编码器处理的符合自定义协议的字节流通过Netty进行网络传输
      * 先通过服务发现找到IP[负载均衡],再利用doConnect进行连接返回channel，通过channel发送数据
-     * TODO:容错机制可以在这里做吧
+     * TODO:容错机制可以在这里做吧:差不多，根据返回结果来考虑接下去的策略
      * */
     public Object sendRpcRequest(RpcRequest rpcRequest){
         // build return value

@@ -1,12 +1,14 @@
 package tcode.rpc.provider;
 
 
+import org.apache.dubbo.common.extension.SPI;
 import tcode.rpc.config.RpcServiceConfig;
 
 /**
  * store and provide service object.
  *
  */
+@SPI
 public interface ServiceProvider {
 
     /**

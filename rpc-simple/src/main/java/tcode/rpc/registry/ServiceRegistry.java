@@ -1,7 +1,9 @@
 package tcode.rpc.registry;
 
-import java.net.InetSocketAddress;
+import org.apache.dubbo.common.extension.SPI;
 
+import java.net.InetSocketAddress;
+@SPI
 public interface ServiceRegistry {
     void registerService(String rpcServiceName, InetSocketAddress inetSocketAddress);
 }

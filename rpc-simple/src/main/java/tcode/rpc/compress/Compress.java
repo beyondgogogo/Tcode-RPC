@@ -1,13 +1,12 @@
 package tcode.rpc.compress;
 
 
+import org.apache.dubbo.common.extension.SPI;
 
 /**
- * @author wangtao .
- * @createTime on 2020/10/3
- */
-
-//@SPI
+ * @author 田成强
+ * */
+@SPI
 public interface Compress {
 
     byte[] compress(byte[] bytes);

@@ -2,6 +2,7 @@ package tcode.rpc.compress.gzip;
 
 
 
+import org.apache.dubbo.common.Extension;
 import tcode.rpc.compress.Compress;
 
 import java.io.ByteArrayInputStream;
