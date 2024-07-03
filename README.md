@@ -1,4 +1,24 @@
-## 本文档用于记录重构过程
+# Tcode-RPC
+
+> 前言：该rpc框架参考javaGuide对应项目：https://github.com/Snailclimb/guide-rpc-framework
+>
+> 包括但不限于做了以下修改：
+>
+> - [x] 1.增加了容错层[包括快速失败，故障转移等策略]
+>
+> - [x] 2.修改了Zookeeper的永久节点为临时节点，达到动态检测的作用
+>
+> - [x] 3.剥离Spring框架[各种依赖注入/bean对象的切入点]，使得组件框架迁移性更好
+
+
+
+## 一.项目架构图
+
+<img src="assets/image-20240703160151479.png" alt="image-20240703160151479" style="zoom:80%;" /> 
+
+
+
+## 二.项目重构过程
 
 ### 2024.6.23
 
@@ -150,3 +170,13 @@
 > 实现步骤：1.引入依赖  2.在接口标注@SPI注解  3.在配置文件中写好位置  4.通过ExtensionLoader.getExtensionLoader.getExtension来获取
 >
 > ![image-20240702190413953](assets/image-20240702190413953.png) 
+
+
+
+### 2024.7.3
+
+> 今天呢主要是书写下关于测试调用的方法：
+>
+> <img src="assets/image-20240703154533169.png" alt="image-20240703154533169" style="zoom:67%;" /> 
+>
+> 同时呢再完善下文档，以及后续一些知识点的深入

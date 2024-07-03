@@ -1,6 +1,7 @@
 package tcode.rpc.proxy;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import tcode.rpc.config.RpcServiceConfig;
 import tcode.rpc.enums.RpcResponseCodeEnum;
 import tcode.rpc.remote.dto.RpcRequest;
@@ -10,6 +11,7 @@ import tcode.rpc.tolerance.FaultTolerance;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.security.cert.Extension;
 import java.util.UUID;
 
 /**
@@ -22,9 +24,9 @@ public class RpcClientProxy implements InvocationHandler {
 
     private final RpcServiceConfig rpcServiceConfig;
     private final FaultTolerance faultTolerance;
-    public RpcClientProxy(RpcServiceConfig rpcServiceConfig,FaultTolerance faultTolerance){
+    public RpcClientProxy(RpcServiceConfig rpcServiceConfig){
         this.rpcServiceConfig=rpcServiceConfig;
-        this.faultTolerance=faultTolerance;
+        this.faultTolerance= ExtensionLoader.getExtensionLoader(FaultTolerance.class).getExtension("failOver");
     }
 
     public <T> T getProxy(Class<T> clazz) {

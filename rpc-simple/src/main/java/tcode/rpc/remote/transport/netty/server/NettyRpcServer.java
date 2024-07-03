@@ -11,6 +11,10 @@ import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import tcode.rpc.config.RpcServiceConfig;
+import tcode.rpc.factory.SingletonFactory;
+import tcode.rpc.provider.ServiceProvider;
+import tcode.rpc.provider.impl.ZkServiceProviderImpl;
 import tcode.rpc.remote.transport.netty.codec.RpcMessageDecoder;
 import tcode.rpc.remote.transport.netty.codec.RpcMessageEncoder;
 import tcode.rpc.utils.ThreadPoolFactoryUtil;
@@ -24,7 +28,11 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class NettyRpcServer {
     public static final int PORT = 9998;
+    private final ServiceProvider serviceProvider = SingletonFactory.getInstance(ZkServiceProviderImpl.class);
 
+    public void registerService(RpcServiceConfig rpcServiceConfig) {
+        serviceProvider.publishService(rpcServiceConfig);
+    }
     @SneakyThrows
     public void start() {
         //CustomShutdownHook.getCustomShutdownHook().clearAll();
